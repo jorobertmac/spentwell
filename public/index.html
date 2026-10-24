@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpentWell — Zero-Based Budget</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script type="module" src="/app.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1 class="logo">SpentWell</h1>
+      <nav class="nav">
+        <button type="button" class="nav-tab active" data-view="budget">Budget</button>
+        <button type="button" class="nav-tab" data-view="transactions">Transactions</button>
+        <button type="button" id="btn-import" class="btn">Import CSV</button>
+        <button type="button" id="btn-auto-cat" class="btn" title="Apply keyword rules to Uncategorized">Auto-categorize</button>
+        <button type="button" id="btn-plaid" class="btn btn-primary">Link Account</button>
+      </nav>
+    </header>
+
+    <main class="main">
+      <section class="view-panel" data-view="budget" id="budget-view">
+        <div id="budget-panel">
+          <p class="empty">Loading budget…</p>
+        </div>
+      </section>
+
+      <section class="view-panel" data-view="transactions" id="transactions-view" hidden>
+        <section class="summary" id="summary">
+          <div class="card">
+            <span class="label">Income</span>
+            <span class="value" id="total-income">$0.00</span>
+          </div>
+          <div class="card">
+            <span class="label">Expenses</span>
+            <span class="value" id="total-expenses">$0.00</span>
+          </div>
+          <div class="card">
+            <span class="label">Net</span>
+            <span class="value" id="total-net">$0.00</span>
+          </div>
+        </section>
+
+        <section class="transactions">
+          <div class="section-header">
+            <h2>Transactions</h2>
+            <span id="tx-count" class="muted">0 transactions</span>
+          </div>
+          <p class="filter-hint muted" id="tx-filter-hint"></p>
+          <div id="transaction-list" class="transaction-list">
+            <p class="empty">No transactions yet. Import a CSV or link an account.</p>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <input type="file" id="csv-input" accept=".csv,text/csv" hidden>
+  </div>
+</body>
+</html>
