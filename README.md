@@ -26,6 +26,13 @@ Supports two data sources:
 - Manual category dropdown on each transaction
 - Month-filtered list aligned with the budget month
 
+### Savings goals
+- Target amount + optional end date → **required monthly contribution**
+- Typical monthly contribution with projected balance at the goal date
+- **External account** balance (money not linked in the app) counted toward progress
+- Interest/dividends: **auto** (APY compounds monthly) or **manual** entries
+- Activity log for contributions, interest, and adjustments
+
 ### Inspired by
 - **EveryDollar** — zero-based planning, planned/spent/remaining, category groups
 - **DollarWise** — category review, spending vs plan, practical tracking
@@ -52,7 +59,7 @@ spentwell/
 ├── .env.example
 ├── .gitignore
 ├── README.md
-├── server.js                     # Express + API (budget, transactions, Plaid)
+├── server.js                     # Express + API (budget, transactions, goals, Plaid)
 │
 ├── public/
 │   ├── index.html
@@ -61,13 +68,15 @@ spentwell/
 │   │   ├── ui.js
 │   │   ├── csv.js
 │   │   ├── plaid.js
-│   │   └── budget.js             # Zero-based logic, defaults, rules
+│   │   ├── budget.js             # Zero-based logic, defaults, rules
+│   │   └── goals.js              # Savings goals, required monthly, interest
 │   └── css/
 │       └── style.css
 │
 └── data/                         # git-ignored
     ├── transactions.json
     ├── budgets.json              # Monthly budgets keyed by YYYY-MM
+    ├── goals.json                # Savings goals
     └── accounts.json
 ```
 
