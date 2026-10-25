@@ -1,5 +1,6 @@
 import { renderTransactions, updateSummary, renderBudget, setActiveView } from './modules/ui.js';
 import { renderGoals } from './modules/goalsUi.js';
+import { renderDebts } from './modules/debtsUi.js';
 import { handleCsvImport } from './modules/csv.js';
 import { initPlaid } from './modules/plaid.js';
 import {
@@ -18,12 +19,19 @@ import {
   addGoalEntry,
   applyAutoInterest,
 } from './modules/goals.js';
+import {
+  loadDebts,
+  saveDebt,
+  deleteDebt,
+  recordPayment,
+} from './modules/debts.js';
 
 let state = {
   month: currentMonthKey(),
   transactions: [],
   budget: null,
   goals: [],
+  debts: [],
   view: 'budget',
 };
 
@@ -92,6 +100,36 @@ async function refreshGoals() {
   });
 }
 
+async function refreshDebts() {
+  state.debts = await loadDebts();
+  renderDebts(state.debts, {
+    onSave: async (payload) => {
+      try {
+        await saveDebt(payload);
+        await refreshDebts();
+      } catch (err) {
+        alert(err.message);
+      }
+    },
+    onDelete: async (id) => {
+      try {
+        await deleteDebt(id);
+        await refreshDebts();
+      } catch (err) {
+        alert(err.message);
+      }
+    },
+    onPayment: async (id, entry) => {
+      try {
+        await recordPayment(id, entry);
+        await refreshDebts();
+      } catch (err) {
+        alert(err.message);
+      }
+    },
+  });
+}
+
 async function refresh() {
   state.transactions = await loadTransactions();
   state.budget = await loadBudget(state.month);
@@ -120,6 +158,7 @@ async function refresh() {
   }
 
   await refreshGoals();
+  await refreshDebts();
 }
 
 async function init() {
