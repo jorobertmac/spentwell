@@ -13,6 +13,7 @@
       <h1 class="logo">SpentWell</h1>
       <nav class="nav">
         <button type="button" class="nav-tab active" data-view="budget">Budget</button>
+        <button type="button" class="nav-tab" data-view="goals">Goals</button>
         <button type="button" class="nav-tab" data-view="transactions">Transactions</button>
         <button type="button" id="btn-import" class="btn">Import CSV</button>
         <button type="button" id="btn-auto-cat" class="btn" title="Apply keyword rules to Uncategorized">Auto-categorize</button>
@@ -21,12 +22,21 @@
     </header>
 
     <main class="main">
+      <!-- Zero-based budget view (EveryDollar-style) -->
       <section class="view-panel" data-view="budget" id="budget-view">
         <div id="budget-panel">
           <p class="empty">Loading budget…</p>
         </div>
       </section>
 
+      <!-- Savings goals view -->
+      <section class="view-panel" data-view="goals" id="goals-view" hidden>
+        <div id="goals-panel">
+          <p class="empty">Loading goals…</p>
+        </div>
+      </section>
+
+      <!-- Transactions view -->
       <section class="view-panel" data-view="transactions" id="transactions-view" hidden>
         <section class="summary" id="summary">
           <div class="card">
