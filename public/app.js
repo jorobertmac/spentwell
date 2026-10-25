@@ -1,4 +1,5 @@
-import { renderTransactions, updateSummary, renderBudget, renderGoals, setActiveView } from './modules/ui.js';
+import { renderTransactions, updateSummary, renderBudget, setActiveView } from './modules/ui.js';
+import { renderGoals } from './modules/goalsUi.js';
 import { handleCsvImport } from './modules/csv.js';
 import { initPlaid } from './modules/plaid.js';
 import {
