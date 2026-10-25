@@ -9,17 +9,21 @@ const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Ensure data directory exists
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Multer for CSV uploads (memory storage)
 const upload = multer({ storage: multer.memoryStorage() });
 
+// ---------- Plaid client ----------
 const plaidConfig = new Configuration({
   basePath: PlaidEnvironments[process.env.PLAID_ENV || 'sandbox'],
   baseOptions: {
@@ -31,6 +35,7 @@ const plaidConfig = new Configuration({
 });
 const plaidClient = new PlaidApi(plaidConfig);
 
+// ---------- Helpers ----------
 function loadJson(filename, fallback = []) {
   const filePath = path.join(dataDir, filename);
   if (!fs.existsSync(filePath)) return fallback;
@@ -46,15 +51,19 @@ function saveJson(filename, data) {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
+// Simple CSV parser (handles quoted fields)
 function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
+
   const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
   const rows = [];
+
   for (let i = 1; i < lines.length; i++) {
     const values = [];
     let current = '';
     let inQuotes = false;
+
     for (const char of lines[i]) {
       if (char === '"') {
         inQuotes = !inQuotes;
@@ -66,6 +75,7 @@ function parseCsv(text) {
       }
     }
     values.push(current.trim().replace(/^"|"$/g, ''));
+
     const row = {};
     headers.forEach((h, idx) => {
       row[h] = values[idx] ?? '';
@@ -75,6 +85,7 @@ function parseCsv(text) {
   return rows;
 }
 
+// Keyword rules for auto-categorization (server-side mirror)
 const CATEGORY_RULES = [
   { keywords: ['costco', 'walmart', 'kroger', 'safeway', 'grocery', 'trader joe', 'aldi', 'whole foods'], category: 'Groceries' },
   { keywords: ['mcdonald', 'starbucks', 'chipotle', 'restaurant', 'doordash', 'uber eats', 'grubhub', 'cafe', 'coffee'], category: 'Restaurants' },
@@ -99,19 +110,23 @@ function suggestCategory(description) {
   return 'Uncategorized';
 }
 
+// Normalize a raw bank CSV row into our transaction shape
 function normalizeTransaction(row, source = 'csv') {
   const date =
     row.Date || row.date || row['Transaction Date'] || row['Posting Date'] || '';
   const description =
     row.Description || row.description || row.Memo || row.Payee || row.Name || '';
   const amountRaw = row.Amount || row.amount || row.Debit || row.Credit || '0';
+
   let amount = parseFloat(String(amountRaw).replace(/[$,]/g, '')) || 0;
+
   if (row.Debit && !row.Amount) {
     amount = -Math.abs(parseFloat(String(row.Debit).replace(/[$,]/g, '')) || 0);
   }
   if (row.Credit && !row.Amount) {
     amount = Math.abs(parseFloat(String(row.Credit).replace(/[$,]/g, '')) || 0);
   }
+
   const desc = description.trim();
   return {
     id: `${source}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -172,39 +187,54 @@ function createDefaultBudget(month) {
   };
 }
 
+// ---------- Routes ----------
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', app: 'SpentWell' });
 });
 
+// ----- CSV Import -----
 app.post('/api/import/csv', upload.single('file'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
+
     const text = req.file.buffer.toString('utf8');
     const rawRows = parseCsv(text);
     const transactions = rawRows.map((row) => normalizeTransaction(row, 'csv'));
+
     const existing = loadJson('transactions.json', []);
     const merged = [...existing, ...transactions];
     saveJson('transactions.json', merged);
-    res.json({ imported: transactions.length, total: merged.length, transactions });
+
+    res.json({
+      imported: transactions.length,
+      total: merged.length,
+      transactions,
+    });
   } catch (err) {
     console.error('CSV import error:', err);
     res.status(500).json({ error: 'Failed to parse CSV' });
   }
 });
 
+// Get all stored transactions
 app.get('/api/transactions', (_req, res) => {
-  res.json(loadJson('transactions.json', []));
+  const transactions = loadJson('transactions.json', []);
+  res.json(transactions);
 });
 
+// Update a single transaction (category, etc.)
 app.patch('/api/transactions/:id', (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body || {};
     const transactions = loadJson('transactions.json', []);
     const idx = transactions.findIndex((t) => t.id === id);
-    if (idx === -1) return res.status(404).json({ error: 'Transaction not found' });
+    if (idx === -1) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
     if (typeof updates.category === 'string') {
       transactions[idx].category = updates.category.trim() || 'Uncategorized';
     }
@@ -219,6 +249,7 @@ app.patch('/api/transactions/:id', (req, res) => {
   }
 });
 
+// Auto-categorize Uncategorized transactions using keyword rules
 app.post('/api/transactions/auto-categorize', (_req, res) => {
   try {
     const transactions = loadJson('transactions.json', []);
@@ -240,6 +271,7 @@ app.post('/api/transactions/auto-categorize', (_req, res) => {
   }
 });
 
+// ----- Monthly Budget (zero-based) -----
 app.get('/api/budget/:month', (req, res) => {
   try {
     const { month } = req.params;
@@ -282,11 +314,13 @@ app.put('/api/budget/:month', (req, res) => {
   }
 });
 
+// List available budget months
 app.get('/api/budgets', (_req, res) => {
   const all = loadJson('budgets.json', {});
   res.json(Object.keys(all).sort().reverse());
 });
 
+// ----- Plaid -----
 app.post('/api/plaid/create-link-token', async (req, res) => {
   try {
     const response = await plaidClient.linkTokenCreate({
@@ -306,13 +340,22 @@ app.post('/api/plaid/create-link-token', async (req, res) => {
 app.post('/api/plaid/exchange-public-token', async (req, res) => {
   try {
     const { public_token } = req.body;
-    if (!public_token) return res.status(400).json({ error: 'public_token is required' });
+    if (!public_token) {
+      return res.status(400).json({ error: 'public_token is required' });
+    }
+
     const exchange = await plaidClient.itemPublicTokenExchange({ public_token });
     const accessToken = exchange.data.access_token;
     const itemId = exchange.data.item_id;
+
     const accounts = loadJson('accounts.json', []);
-    accounts.push({ item_id: itemId, access_token: accessToken, linked_at: new Date().toISOString() });
+    accounts.push({
+      item_id: itemId,
+      access_token: accessToken,
+      linked_at: new Date().toISOString(),
+    });
     saveJson('accounts.json', accounts);
+
     res.json({ success: true, item_id: itemId });
   } catch (err) {
     console.error('Plaid exchange error:', err.response?.data || err.message);
@@ -326,9 +369,13 @@ app.get('/api/plaid/transactions', async (req, res) => {
     if (accounts.length === 0) {
       return res.json({ transactions: [], message: 'No linked accounts' });
     }
+
     const allTransactions = [];
     const endDate = new Date().toISOString().slice(0, 10);
-    const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+
     for (const account of accounts) {
       try {
         const response = await plaidClient.transactionsGet({
@@ -336,6 +383,7 @@ app.get('/api/plaid/transactions', async (req, res) => {
           start_date: startDate,
           end_date: endDate,
         });
+
         const txs = response.data.transactions.map((tx) => {
           const desc = tx.name || tx.merchant_name || '';
           const plaidCat =
@@ -354,24 +402,35 @@ app.get('/api/plaid/transactions', async (req, res) => {
             pending: tx.pending,
           };
         });
+
         allTransactions.push(...txs);
       } catch (err) {
         console.error('Plaid transactions error for item:', account.item_id, err.message);
       }
     }
+
     const existing = loadJson('transactions.json', []);
     const existingIds = new Set(existing.map((t) => t.id));
     const newOnes = allTransactions.filter((t) => !existingIds.has(t.id));
     if (newOnes.length > 0) {
       saveJson('transactions.json', [...existing, ...newOnes]);
     }
-    res.json({ transactions: allTransactions, added: newOnes.length });
+
+    res.json({
+      transactions: allTransactions,
+      added: newOnes.length,
+    });
   } catch (err) {
     console.error('Plaid transactions route error:', err);
     res.status(500).json({ error: 'Failed to fetch transactions' });
   }
 });
 
+// Savings goals routes
+const registerGoalsRoutes = require('./goalsApi');
+registerGoalsRoutes(app, { loadJson, saveJson });
+
+// Fallback: serve index.html for any unmatched route (SPA-style)
 app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
