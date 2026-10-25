@@ -14,6 +14,7 @@
       <nav class="nav">
         <button type="button" class="nav-tab active" data-view="budget">Budget</button>
         <button type="button" class="nav-tab" data-view="goals">Goals</button>
+        <button type="button" class="nav-tab" data-view="debts">Debts</button>
         <button type="button" class="nav-tab" data-view="transactions">Transactions</button>
         <button type="button" id="btn-import" class="btn">Import CSV</button>
         <button type="button" id="btn-auto-cat" class="btn" title="Apply keyword rules to Uncategorized">Auto-categorize</button>
@@ -33,6 +34,13 @@
       <section class="view-panel" data-view="goals" id="goals-view" hidden>
         <div id="goals-panel">
           <p class="empty">Loading goals…</p>
+        </div>
+      </section>
+
+      <!-- Debts / mortgage view -->
+      <section class="view-panel" data-view="debts" id="debts-view" hidden>
+        <div id="debts-panel">
+          <p class="empty">Loading debts…</p>
         </div>
       </section>
 
