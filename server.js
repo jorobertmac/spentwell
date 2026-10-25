@@ -430,6 +430,10 @@ app.get('/api/plaid/transactions', async (req, res) => {
 const registerGoalsRoutes = require('./goalsApi');
 registerGoalsRoutes(app, { loadJson, saveJson });
 
+// Debt management routes
+const registerDebtsRoutes = require('./debtsApi');
+registerDebtsRoutes(app, { loadJson, saveJson });
+
 // Fallback: serve index.html for any unmatched route (SPA-style)
 app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
