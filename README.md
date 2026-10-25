@@ -33,6 +33,14 @@ Supports two data sources:
 - Interest/dividends: **auto** (APY compounds monthly) or **manual** entries
 - Activity log for contributions, interest, and adjustments
 
+### Debt management
+- Track **home mortgage**, HELOC, auto, student, credit card, personal, medical, and other debts
+- Principal, APR, monthly P&I, term, extra payments, escrow (mortgage)
+- **Amortization schedule** with payoff date and interest remaining
+- Extra-payment comparison (interest and months saved)
+- Record payments (principal / interest split) with history
+- Avalanche vs snowball payoff order suggestions
+
 ### Inspired by
 - **EveryDollar** — zero-based planning, planned/spent/remaining, category groups
 - **DollarWise** — category review, spending vs plan, practical tracking
@@ -59,7 +67,9 @@ spentwell/
 ├── .env.example
 ├── .gitignore
 ├── README.md
-├── server.js                     # Express + API (budget, transactions, goals, Plaid)
+├── server.js                     # Express + API (budget, transactions, goals, debts, Plaid)
+├── goalsApi.js                   # Savings goals routes
+├── debtsApi.js                   # Debt management routes
 │
 ├── public/
 │   ├── index.html
@@ -69,7 +79,10 @@ spentwell/
 │   │   ├── csv.js
 │   │   ├── plaid.js
 │   │   ├── budget.js             # Zero-based logic, defaults, rules
-│   │   └── goals.js              # Savings goals, required monthly, interest
+│   │   ├── goals.js              # Savings goals math + API client
+│   │   ├── goalsUi.js
+│   │   ├── debts.js              # Amortization, payoff, API client
+│   │   └── debtsUi.js
 │   └── css/
 │       └── style.css
 │
@@ -77,78 +90,18 @@ spentwell/
     ├── transactions.json
     ├── budgets.json              # Monthly budgets keyed by YYYY-MM
     ├── goals.json                # Savings goals
+    ├── debts.json                # Debt accounts
     └── accounts.json
 ```
 
 ---
 
-## Getting Started
+## Setup
 
 ```bash
 npm install
-cp .env.example .env
-# edit .env with Plaid credentials (optional for CSV-only use)
+cp .env.example .env   # add Plaid keys if using Link
 npm start
 ```
 
-Open **http://localhost:3000**.
-
-1. Go to the **Budget** tab and set planned income and category amounts.
-2. Import a CSV or link an account.
-3. Categorize transactions (or use **Auto-categorize**).
-4. Watch Planned / Spent / Remaining update as you spend.
-
----
-
-## API (local)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/transactions` | All transactions |
-| PATCH | `/api/transactions/:id` | Update category |
-| POST | `/api/transactions/auto-categorize` | Apply keyword rules |
-| GET | `/api/budget/:month` | Get/create budget for `YYYY-MM` |
-| PUT | `/api/budget/:month` | Save budget |
-| POST | `/api/import/csv` | Upload CSV |
-| POST | `/api/plaid/*` | Plaid link & transactions |
-
----
-
-## Data model
-
-**Transaction**
-
-```json
-{
-  "id": "unique-id",
-  "date": "2026-10-15",
-  "amount": -42.50,
-  "description": "COSTCO WHOLESALE",
-  "merchant": "Costco",
-  "category": "Groceries",
-  "account": "Citi Costco Visa",
-  "source": "csv",
-  "pending": false
-}
-```
-
-**Budget (per month)**
-
-```json
-{
-  "month": "2026-10",
-  "categories": [
-    { "id": "…", "name": "Paycheck", "group": "income", "planned": 3500 },
-    { "id": "…", "name": "Groceries", "group": "food", "planned": 400 }
-  ],
-  "updatedAt": "2026-10-24T…"
-}
-```
-
----
-
-## Notes
-
-- Personal use only. Do not commit `.env` or `data/`.
-- Plaid sandbox is free for testing; production requires your own keys.
-- CSV parsing is tolerant of common bank export headers.
+Open http://localhost:3000
