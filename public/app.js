@@ -1,4 +1,4 @@
-import { renderTransactions, updateSummary, renderBudget, setActiveView } from './modules/ui.js';
+import { renderTransactions, updateSummary, renderBudget, renderGoals, setActiveView } from './modules/ui.js';
 import { handleCsvImport } from './modules/csv.js';
 import { initPlaid } from './modules/plaid.js';
 import {
@@ -10,11 +10,19 @@ import {
   transactionsInMonth,
   applyAutoCategorize,
 } from './modules/budget.js';
+import {
+  loadGoals,
+  saveGoal,
+  deleteGoal,
+  addGoalEntry,
+  applyAutoInterest,
+} from './modules/goals.js';
 
 let state = {
   month: currentMonthKey(),
   transactions: [],
   budget: null,
+  goals: [],
   view: 'budget',
 };
 
@@ -37,6 +45,49 @@ async function onPlannedChange(catId, planned) {
   renderBudget(state.budget, state.transactions, {
     onMonthChange,
     onPlannedChange,
+  });
+}
+
+async function refreshGoals() {
+  state.goals = await loadGoals();
+  renderGoals(state.goals, {
+    onSave: async (payload) => {
+      try {
+        await saveGoal(payload);
+        await refreshGoals();
+      } catch (err) {
+        alert(err.message);
+      }
+    },
+    onDelete: async (id) => {
+      try {
+        await deleteGoal(id);
+        await refreshGoals();
+      } catch (err) {
+        alert(err.message);
+      }
+    },
+    onAddEntry: async (id, entry) => {
+      try {
+        await addGoalEntry(id, entry);
+        await refreshGoals();
+      } catch (err) {
+        alert(err.message);
+      }
+    },
+    onApplyInterest: async () => {
+      try {
+        const result = await applyAutoInterest();
+        alert(
+          result.totalApplied > 0
+            ? `Applied ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(result.totalApplied)} in interest.`
+            : 'No auto-interest goals with a rate, or balances were zero.'
+        );
+        await refreshGoals();
+      } catch (err) {
+        alert(err.message);
+      }
+    },
   });
 }
 
@@ -66,6 +117,8 @@ async function refresh() {
   if (hint) {
     hint.textContent = `Showing ${state.month} only. Switch months on the Budget tab.`;
   }
+
+  await refreshGoals();
 }
 
 async function init() {
